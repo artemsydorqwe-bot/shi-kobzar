@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="uk" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAкомпас — Український пошуковий навігатор</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        uaBlue: '#005BBB',
+                        uaYellow: '#FFD500',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+        body { font-family: 'Montserrat', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-300">
+
+    <!-- Верхня панель -->
+    <header class="flex justify-between items-center px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+        <div class="flex items-center gap-2 cursor-pointer" onclick="location.reload()">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-uaBlue to-blue-400 flex items-center justify-center text-white shadow-md shadow-uaBlue/20">
+                <i class="fa-solid fa-compass text-lg"></i>
+            </div>
+            <span class="text-xl font-bold tracking-tight">UA<span class="text-uaBlue">компас</span></span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-300 dark:hover:bg-slate-700 transition" title="Змінити тему">
+                <i id="themeIcon" class="fa-solid fa-moon text-slate-700 dark:text-uaYellow"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Основний контент (головний екран пошуку) -->
+    <main id="homeView" class="flex-1 flex flex-col items-center justify-center px-4 py-12 max-w-2xl mx-auto w-full text-center">
+        <div class="mb-8">
+            <h1 class="text-4xl md:text-5xl font-extrabold mb-3 tracking-tight">
+                Відкривай своє з <span class="text-uaBlue">UAкомпасом</span>
+            </h1>
+            <p class="text-slate-500 dark:text-slate-400 text-sm md:text-base">
+                Шукайте українські сайти, товари, послуги та знання швидко й зручно
+            </p>
+        </div>
+
+        <!-- Пошуковий рядок -->
+        <div class="w-full relative mb-6">
+            <div class="flex items-center bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg hover:border-uaBlue dark:hover:border-uaBlue transition focus-within:border-uaBlue px-4 py-3">
+                <i class="fa-solid fa-magnifying-glass text-slate-400 mr-3 text-lg"></i>
+                <input type="text" id="searchInput" placeholder="Введіть запит українською..." class="w-full bg-transparent outline-none text-slate-800 dark:text-slate-100 text-base placeholder-slate-400" autocomplete="off">
+                <button onclick="clearSearch()" id="clearBtn" class="hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 mr-2">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <!-- Автодоповнення -->
+            <div id="suggestions" class="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl hidden z-50 overflow-hidden text-left"></div>
+        </div>
+
+        <!-- Кнопки пошуку -->
+        <div class="flex gap-3 mb-10">
+            <button onclick="performSearch()" class="px-6 py-3 bg-uaBlue hover:bg-blue-600 text-white font-semibold rounded-xl shadow-md shadow-uaBlue/30 transition transform active:scale-95">
+                Шукати з компасом
+            </button>
+            <button onclick="luckySearch()" class="px-6 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 font-medium rounded-xl transition">
+                Мені пощастить!
+            </button>
+        </div>
+
+        <!-- Швидкі теги -->
+        <div class="flex flex-wrap justify-center gap-2">
+            <span class="text-xs text-slate-400 self-center mr-1">Популярне:</span>
+            <button onclick="quickSearch('Новини України')" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-medium rounded-lg transition">Новини</button>
+            <button onclick="quickSearch('Українські бренди')" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-medium rounded-lg transition">Бренди</button>
+            <button onclick="quickSearch('Кіно українською')" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-medium rounded-lg transition">Кіно</button>
+            <button onclick="quickSearch('Рецепти традиційні')" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-medium rounded-lg transition">Рецепти</button>
+        </div>
+    </main>
+
+    <!-- Сторінка результатів пошуку (спочатку схована) -->
+    <div id="resultsView" class="hidden flex-1 flex flex-col w-full max-w-5xl mx-auto px-4 py-6">
+        <!-- Верхня панель результатів -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800 mb-6">
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <button onclick="goHome()" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div class="relative flex-1 md:w-96">
+                    <input type="text" id="resultSearchInput" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm outline-none focus:border-uaBlue" autocomplete="off">
+                </div>
+                <button onclick="performSearchFromResults()" class="px-4 py-2 bg-uaBlue text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition">Шукати</button>
+            </div>
+            <!-- Таби категорій -->
+            <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0">
+                <button onclick="switchTab('all')" class="tab-btn px-4 py-1.5 rounded-lg text-sm font-medium bg-uaBlue text-white transition">Усе</button>
+                <button onclick="switchTab('news')" class="tab-btn px-4 py-1.5 rounded-lg text-sm font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Новини</button>
+                <button onclick="switchTab('sites')" class="tab-btn px-4 py-1.5 rounded-lg text-sm font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Сайти</button>
+            </div>
+        </div>
+
+        <!-- Основна колонка результатів + ШІ-блок -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Список сайтів/новин -->
+            <div class="lg:col-span-2 space-y-4" id="searchResultsList">
+                <!-- Динамічні результати -->
+            </div>
+
+            <!-- ШІ-Кобзар (блок розумного аналізу) -->
+            <div class="space-y-4">
+                <div class="bg-gradient-to-br from-blue-500/10 via-uaYellow/10 to-transparent border border-uaBlue/20 dark:border-uaBlue/30 rounded-2xl p-5 shadow-sm">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-7 h-7 rounded-lg bg-uaBlue flex items-center justify-center text-white text-xs">
+                            <i class="fa-solid fa-brain"></i>
+                        </div>
+                        <h3 class="font-bold text-sm text-uaBlue dark:text-blue-400">ШІ-Кобзар аналізує</h3>
+                    </div>
+                    <p id="aiSummaryText" class="text-xs md:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Тут з'явиться короткий інтелектуальний висновок на основі вашого пошукового запиту...
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Підвал -->
+    <footer class="py-6 text-center text-xs text-slate-400 border-t border-slate-200 dark:border-slate-800 mt-auto">
+        &copy; 2026 UAкомпас. Створено з любов'ю в Україні.
+    </footer>
+
+    <!-- JavaScript логіка -->
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const resultSearchInput = document.getElementById('resultSearchInput');
+        const clearBtn = document.getElementById('clearBtn');
+        const suggestionsBox = document.getElementById('suggestions');
+        const homeView = document.getElementById('homeView');
+        const resultsView = document.getElementById('resultsView');
+        const searchResultsList = document.getElementById('searchResultsList');
+        const aiSummaryText = document.getElementById('aiSummaryText');
+
+        const mockDatabase = [
+            { title: "Офіційний портал України — Дія", url: "https://diia.gov.ua", snippet: "Державні послуги онлайн, цифрові документи, єПослуги та підтримка громадян.", category: "sites" },
+            { title: "Суспільне Новини — Головні події в Україні", url: "https://suspilne.media", snippet: "Оперативні та перевірені новини з усіх регіонів України та світу.", category: "news" },
+            { title: "Українська правда — видання про політику і життя", url: "https://www.pravda.com.ua", snippet: "Аналітика, розслідування, оперативні новини про ситуацію в країні.", category: "news" },
+            { title: "Prom.ua — маркетплейс українських товарів", url: "https://prom.ua", snippet: "Мільйони товарів від тисяч українських продавців та підприємців.", category: "sites" },
+            { title: "ЛУН — пошук житла та нерухомості", url: "https://lun.ua", snippet: "Зручний пошук квартир у новобудовах та на вторинному ринку по всій Україні.", category: "sites" },
+            { title: "Українські народні казки та міфи", url: "https://kazka.ua", snippet: "Збірка автентичного фольклору, легенд Карпат та історій для дітей.", category: "sites" }
+        ];
+
+        searchInput.addEventListener('input', (e) => {
+            const val = e.target.value.trim();
+            if (val.length > 0) {
+                clearBtn.classList.remove('hidden');
+                showSuggestions(val);
+            } else {
+                clearBtn.classList.add('hidden');
+                suggestionsBox.classList.add('hidden');
+            }
+        });
+
+        function clearSearch() {
+            searchInput.value = '';
+            clearBtn.classList.add('hidden');
+            suggestionsBox.classList.add('hidden');
+            searchInput.focus();
+        }
+
+        function showSuggestions(query) {
+            const matches = mockDatabase.filter(item => item.title.toLowerCase().includes(query.toLowerCase()));
+            if (matches.length === 0) {
+                suggestionsBox.classList.add('hidden');
+                return;
+            }
+            suggestionsBox.innerHTML = matches.slice(0, 4).map(item => `
+                <div onclick="selectSuggestion('${item.title}')" class="px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer text-sm border-b border-slate-100 dark:border-slate-700 last:border-none">
+                    <div class="font-medium">${item.title}</div>
+                    <div class="text-xs text-slate-400 truncate">${item.url}</div>
+                </div>
+            `).join('');
+            suggestionsBox.classList.remove('hidden');
+        }
+
+        function selectSuggestion(title) {
+            searchInput.value = title;
+            suggestionsBox.classList.add('hidden');
+            performSearch();
+        }
+
+        function quickSearch(query) {
+            searchInput.value = query;
+            performSearch();
+        }
+
+        function performSearch() {
+            const query = searchInput.value.trim() || resultSearchInput.value.trim();
+            if (!query) return;
+
+            homeView.classList.add('hidden');
+            resultsView.classList.remove('hidden');
+            resultSearchInput.value = query;
+            suggestionsBox.classList.add('hidden');
+
+            renderResults(query, 'all');
+            generateAiSummary(query);
+        }
+
+        function performSearchFromResults() {
+            const query = resultSearchInput.value.trim();
+            if (!query) return;
+            renderResults(query, 'all');
+            generateAiSummary(query);
+        }
+
+        function goHome() {
+            resultsView.classList.add('hidden');
+            homeView.classList.remove('hidden');
+            searchInput.value = '';
+            clearBtn.classList.add('hidden');
+        }
+
+        function switchTab(category) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-4 py-1.5 rounded-lg text-sm font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition";
+            });
+            event.target.className = "tab-btn px-4 py-1.5 rounded-lg text-sm font-medium bg-uaBlue text-white transition";
+            
+            const query = resultSearchInput.value.trim();
+            renderResults(query, category);
+        }
+
+        function renderResults(query, category) {
+            let filtered = mockDatabase.filter(item => 
+                item.title.toLowerCase().includes(query.toLowerCase()) || 
+                item.snippet.toLowerCase().includes(query.toLowerCase())
+            );
+
+            if (filtered.length === 0) {
+                filtered = [
+                    { title: `Результат за запитом: ${query}`, url: `https://uakompas.ua/search?q=${encodeURIComponent(query)}`, snippet: `Знайдено релевантні українські джерела, сайти та публікації за вашим запитом.`, category: "sites" }
+                ];
+            }
+
+            if (category !== 'all') {
+                filtered = filtered.filter(item => item.category === category);
+            }
+
+            searchResultsList.innerHTML = filtered.map(item => `
+                <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm hover:border-uaBlue transition">
+                    <div class="text-xs text-slate-400 mb-1 truncate">${item.url}</div>
+                    <a href="${item.url}" target="_blank" class="text-lg font-bold text-uaBlue dark:text-blue-400 hover:underline block mb-2">${item.title}</a>
+                    <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">${item.snippet}</p>
+                </div>
+            `).join('');
+        }
+
+        function generateAiSummary(query) {
+            aiSummaryText.innerHTML = `За запитом <b>«${query}»</b> ШІ-Кобзар опрацював український сегмент мережі. Знайдено найкращі відповіді, офіційні джерела та корисні посилання для швидкого ознайомлення.`;
+        }
+
+        function luckySearch() {
+            searchInput.value = "Дія — державні послуги";
+            performSearch();
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            if (html.classList.contains('light')) {
+                html.classList.remove('light');
+                html.classList.add('dark');
+                icon.className = "fa-solid fa-sun text-uaYellow";
+            } else {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                icon.className = "fa-solid fa-moon text-slate-700";
+            }
+        }
+    </script>
+</body>
+</html>
